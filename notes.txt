@@ -1,0 +1,138 @@
+# TO DO
+
+* Add see-saw to diagram
+
+OUTLINE
+
+# Handling uncertainty in predictions: approaches to building prediction intervals within a tidymodels framework
+
+Outline:
+
+1. Analytic Approach (& Bayesian Approach) 
+2. Simulation / Bootstrapping Approach
+3. Quantile Regression
+
+---
+
+Hi, I'm Bryan Shalloway, I'm a Data Scientist at NetApp whose worked on a wide range of problems in forecasting, pricing, and customer support.
+
+Today I'll be talking about Prediction intervals, which, roughly speaking, represent the range of the target that you expect some proportion of individual observations to fall within. If you are in a role where you are serving-up predictions, in many cases it makes sense to share a range for a prediction and not just an individual point estimate. 
+
+{Point estimate}
+{Interval}
+
+In this post I'll briefly introduce prediction intervals and then walk through some approaches to producing them both for linear and non-linear models, specifically in a tidymodels framework.
+
+I'm not going to have much code in these examples but will point you to a series of posts I did that provide more in-depth examples and other resources.
+
+Prediction Intervals are commonly confused with confidence intervals -- the difference between the two is that while confidence intervals have to do with uncertainty on the average, prediction intervals have to do with uncertainty on an individual observation. 
+
+Because there's a lot more uncertainty in individual data points compared to the average of a bunch of data points, prediction intervals are much wider than confidence intervals.
+
+OK, so now how to produce prediction intervals in the tidymodels ecosystem.
+
+I don't have time to get into all details of the tidymodels ecoystem except to say that it is awesome and provides a coherent set of tidyverse friendly packages to help with all steps in the model building process. The most foundational being:
+
+1. splitting your data between training/testing sets {rsample}
+2. setting-up a pre-processing recipe {recipes}
+3. specifying your model {parsnip}
+4. putting these pieces together to fit a model (or set of models) on the training data {workflows}
+5. evaluating the model(s) on your hold-out (testing) data {yardstick}
+
+{image of steps of modeling}
+
+There are a bunch of other things you can do with tidymodels, but these are the most foundational steps.
+
+For analytic methods, like linear regression, tidymodels is straight-forward to get prediction intervals from... Is also easy for bayesian methods and follows a similar process... though I'm not going to talk about Bayesian methods today.
+
+{Image predict() method}
+
+OK, so there are two big limitations to out-of-the-box prediction interval methods provided by analytic methods like in linear regression. 
+
+1. Another limitation may be that the linear methods assume a distribution for your prediction intervals that the data doesn't actually follow. Perhaps you could pick a different modeling approach than the standard least squares, but you may also just not know going-in what the appropriate distribution is. 
+
+{IMAGE NON-LINEAR}
+
+2. Another limitation is that many modeling packages is that they just don't provide a method for producing prediction intervals, this is true for many if not most non-linear methods you may want to use.
+
+{IMAGE non-linear pattern}
+
+To get around these you can use a simulation based approach. It's important when simulating prediction intervals that your approach captures both the uncertainty in the sample and the uncertainty in model estimation... a lot of examples online mistakenly only do the latter which would constitute a confidence interval rather than a prediction interval.
+
+Ideally the method would also capture uncertainty both in the model estimation as well as in the pre-processing steps. Which is why I recommend {workboots} which simulates the prediction intervals outputted from an entire tidymodels workflow. I have a post where I walk through a post using my own package for doing this that walks through the underlying steps of the simulation but I'd recommend actually using {workboots} as it's on CRAN and more up-to-date.
+
+I also want to just give a shout-out to the field of conformal inference which offers a range of blended methods for producing prediction intervals -- or prediction bands which is sometimes used when you're speaking more generally.
+
+OK, so a limitation with the {workboots} method as it's currently constructed is that the distribution of the sample variance is expected to be constant -- so while the method can be flexible in terms of the sample distibution, i.e. it doesn't need to be normal, and can capture differences in the variability of the model estimation, it won't work well, for example, with heteroskedasticity. This distinction is often covered by discussions of marginal vs conditional distributions which I won't get into a ton except to give a shout-out to the field of conformal inference which offers a range of largely simulation based methods for creating prediction intervals some of which can be used to help mitigate these challenges.
+
+But I think another big weakness with the simulation based method is that it just takes a long-time. For complicated models that take a long-time to train it may not be a viable option... though again, there are mitigating approaches...
+
+But I want to bring-up a third approach which I often lean on, which is quantile regression. Quantile regression generally works by changing the objective function, e.g. rather than trying to optimize on minimizing the mean error, your model's objective is to minimize the median error or is able to estimate the quantile of a prediction rather than the expected value. A nice thing about these approach is that it's generally a lot faster than simulation based approaches. 
+
+Not all modeling packages have a quantile option but a lot of prominent ones do. For example for some tree-ensemble methods, {ranger} for random forests and {lightgbm} for gradient boosting. A way to take advantage of these approaches is generally to pass in options during the model specification step of a tidymodels workflow. 
+
+Prediction intervals are generally much wider than confidence intervals as you will have more uncertainty of the outcome of a single observation compared with the average of outcomes. 
+
+use those to give me a range for where you think the average home price is you can give me a pretty decent estimate. Some homes will be small, others large, but that should cancel out. 
+
+your range would be much smaller -- some homes will be expensive, others cheap, but in aggregate these differences will cancel out to give you a reasonable estimate of the average -- compared to if I asked you for a 95% prediction interval for a single American home drawn at random. In this case you don't know whether I'm going to draw a cheap or expensive house so your range is subject to much greater uncertainty. 
+
+{IMAGE comparing confidence and prediction intervals}
+
+It can be helpful to think of the two sources of uncertainty in frequentist approaches to modeling
+
+The tidymodels ecosystem is a set of packages for interfacing with common machine learning algorithms and provides a coherent set of packages to help with all steps in the model building process from splitting your data to pre-processing, to hyper-parameter tuning, model evaluation and various other aspects of modeling workflows.
+
+
+
+---
+
+In the case of giving a range for the average the expensive homes and cheap homes will often balance-out so that even if each observation in the sample is pretty different, your range for the average may be narrow and the more observations you have the more narrow your confidence interval will be. However, in the case of predicting the price for a single home the prediction interval will be much wider as everything depends on just that one selection.
+
+
+When we think about uncertainty in predictions it's helpful to think of it as coming from two sources:
+
+1. uncertainty in model estimation -- this is the kind of thing that can be improved with more observations; as you have more observations you feel more confident in your model's prediction of the expected value and
+2. uncertainty in your sample... this is essentially your residuals...
+
+
+Machine Learning approaches generally focus more on point estimates, in this pitch I'll briefly discuss prediction intervals and then discuss how you can produce them in the tidymodels ecosystem.
+
+ -- which is mostly just the associated range of your observations
+ 
+  it follows that the confidence interval is associated with the range of a population parameter -- in this case the average home price; whereas the prediciton interval represents the range for an individual observation with those parameters.
+  
+  For example a confidence interval, on the price of a home that is 1200 square feet will be much more narrow than the prediction interval on a home that is 1200 sq ft because the former represents the range for the AVERAGE price of a 1200 sq ft home compared to the prediction interval being the range of an individual 1200 sq ft home.
+  
+For example if you have a sample of 100 historical home sales and I ask you to use those to give a range for the average price of all homes you might build a confidence interval.
+
+{image of general vs specific case}
+
+If I asked you to give me a range for an individual home selected at random you might^[I select at random that] build a prediction interval.
+
+This example can be thought of as just a simple model with only an intercept, but if we add-in a variable or set of variables, it can be thought of similarly.
+
+For example if we model price ~ sqft and look at a point on this chart, say 1200 sqft. The confidence interval is associated with the range of the average price of all homes that are 1200 sqft compared to the prediction interval which is associated with the range we'd expect of a randomly selected home of that size.
+
+
+Confidence intervals are typically more useful if you're doing inference on parameter estimates, for example evaluating aggregate performance estimates, or evaluting the importance of different features -- but when you care about the uncertainty of the individual predictions, e.g. 
+
+
+
+
+{generic IMAGE of prediction vs confidence intervals}
+
+If your job is to predict the price of homes or some other role where you care about predictions, you'll usually want prediction intervals. I would also argue that a lot of times when you're serving point estimates, you may actually want to be providing prediction intervals.
+
+Very loosely speaking you can think of the uncertainty as primarily coming from two sources:
+
+1. variability in the estimate of the expected value, i.e. roughly assocaited with uncertainty in estimating the model itself, and {associated with confidence interval}
+2. variability in your sample, roughly associated with the size of your errors or residuals {more important to prediction interval}
+
+The width of your prediction intervals is dominated by the latter of these so the best way to reduce the size of your prediction intervals is to make your model as accurate as possible. In the case of confidence intervals you can get narrow the bands just by having lots and lots of observations -- even if your model is doing a bad job of predicting things you can have narrow bands, whereas to get narrow bands on your prediction intervals you generally need a model that does a good job of predicting things, so increasing your observation count beyond a certain point won't really make a big difference unless you're simultaneously adding in new features or allowing for a more flexible modeling framework that actually fits the data.
+
+For example; here is a really simple model with home-price; you can see as I add in more observations to it the confidence intervals shrink a ton but the prediction intervals barely shrink after adding more than a few observations... The way to narrow my prediciton intervals here would likely be to pass-in more features that would reduce my residuals.
+
+{image of bands when increasing observations}
+
+***
