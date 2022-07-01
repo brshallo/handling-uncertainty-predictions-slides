@@ -14,3 +14,12 @@ The pitch was primarily a set-up for my series of posts from last year on buildi
 * [Part 2: Simulating Prediction Intervals](https://www.bryanshalloway.com/2021/04/05/simulating-prediction-intervals/)
 * [Part 3: Quantile Regression Forests for Prediction Intervals](https://www.bryanshalloway.com/2021/04/21/quantile-regression-forests-for-prediction-intervals/)
 
+# Abstract
+
+In many settings your predictive model must output a range rather than just a point estimate. Three common approaches for outputting prediction intervals are to use...
+
+1. a parametric method where the prediction intervals are solved for analytically
+2. a simulation or conformal inference based approach
+3. a method that outputs quantiles
+
+In this elevator pitch, I will briefly walk through examples of how you can do each from within the tidymodels ecosystem. (See bryanshalloway.com for more detailed written examples.)
